@@ -1709,7 +1709,6 @@ class Workflow(WorkflowExecutorInterface):
         # Optionally let the modifier change the rulename.
         orig_name = name
         name = self.modifier.modify_rulename(name)
-
         name = self.add_rule(
             name,
             lineno,

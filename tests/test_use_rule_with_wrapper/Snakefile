@@ -1,7 +1,8 @@
 shell.executable("bash")
 
 rule all:
-    "test.vcf.gz"
+    input:
+        "test.vcf.gz"
 
 rule A:
     input:
@@ -9,7 +10,7 @@ rule A:
     output:
         "test1.vcf.gz"
     wrapper:
-        "0.41.0/bio/vcf/compress"
+        "0.42.0/bio/vcf/compress"
 
 use rule A as B with:
     output:

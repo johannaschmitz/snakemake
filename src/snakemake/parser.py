@@ -969,9 +969,10 @@ class Module(GlobalKeywordState):
             )
 
 
-class UseRule(GlobalKeywordState):
-    subautomata = rule_property_subautomata
-    deprecated = rule_property_deprecated
+class UseRule(Rule):
+# class UseRule(GlobalKeywordState):
+    # subautomata = rule_property_subautomata
+    # deprecated = rule_property_deprecated
 
     def __init__(self, snakefile, base_indent=0, dedent=0, root=True):
         super().__init__(snakefile, base_indent=base_indent, dedent=dedent, root=root)
@@ -986,12 +987,13 @@ class UseRule(GlobalKeywordState):
 
     def end(self):
         name_modifier = "".join(self.name_modifier) if self.name_modifier else None
-        yield "@workflow.userule(rules={!r}, from_module={!r}, exclude_rules={!r}, name_modifier={!r}, lineno={})".format(
-            self.rules, self.from_module, self.exclude_rules, name_modifier, self.lineno
+        yield "@workflow.userule(rules=[{!r}], from_module={!r}, exclude_rules={!r}, name_modifier={!r}, lineno={})".format(
+            self.rulename, self.from_module, self.exclude_rules, name_modifier, self.lineno
         )
         yield "\n"
 
         if self._with_block:
+            print(f"Rulename: {self.rulename}")
             # yield with block
             yield from self._with_block
 
@@ -1001,7 +1003,7 @@ class UseRule(GlobalKeywordState):
         rulename = self.rules[0]
         if rulename == "*":
             rulename = "__allrules__"
-        yield f"def __userule_{self.from_module}_{rulename}():"
+        yield f"def __userule_{self.from_module}_{self.rulename}():"
         # the end is detected.
         # So we can safely reset the indent to zero here
         self.indent = 0
@@ -1183,19 +1185,34 @@ class UseRule(GlobalKeywordState):
             yield "\n", token
             yield token.string, token
         elif is_name(token):
-            try:
-                self._with_block.extend(
-                    self.subautomaton(token.string, token=token).consume()
-                )
-                yield from ()
-            except KeyError:
-                self.error(
-                    f"Unexpected keyword {token.string} in rule definition",
-                    token,
-                )
-            except StopAutomaton as e:
-                self.indentation(e.token)
-                yield from self.block(e.token)
+            if (
+                    not (token.string == "run"
+                    or token.string == "shell"
+                    or token.string == "script"
+                    or token.string == "wrapper"
+                    or token.string == "notebook"
+                    or token.string == "template_engine"
+                    or token.string == "cwl")
+                ):
+                try:
+                    self._with_block.extend(
+                        self.subautomaton(token.string, token=token).consume()
+                    )
+                    yield from ()
+                except KeyError:
+                    self.error(
+                        f"Unexpected keyword {token.string} in rule definition",
+                        token,
+                    )
+                except StopAutomaton as e:
+                    self.indentation(e.token)
+                    yield from self.block(e.token)
+            else:
+                self.rulename = "test"
+                yield f"@workflow.rule(name={self.rulename!r}, lineno={self.lineno}, snakefile={self.snakefile.path!r})", token 
+                yield "\n", token
+                yield from super().block_content(token)
+
         else:
             self.error(
                 "Expecting a keyword or comment "
