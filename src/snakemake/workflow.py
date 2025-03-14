@@ -2273,8 +2273,16 @@ class Workflow(WorkflowExecutorInterface):
         exclude_rules=None,
         name_modifier=None,
         lineno=None,
+        old_func_name=None,
     ):
         def decorate(maybe_ruleinfo):
+            if old_func_name is not None:
+                if len(old_func_name) > 1:
+                    raise WorkflowError(
+                        "'use rule' statement with optional with with statement must declare a single rule but multiple rules are declared."
+                    )
+                print(maybe_ruleinfo)
+
             if from_module is not None:
                 try:
                     module = self.modules[from_module]

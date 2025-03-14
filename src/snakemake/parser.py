@@ -970,7 +970,10 @@ class Module(GlobalKeywordState):
 
 
 class UseRule(GlobalKeywordState):
-    subautomata = rule_property_subautomata
+    subautomata = dict(
+        wrapper=Wrapper,
+        **rule_property_subautomata
+    )
     deprecated = rule_property_deprecated
 
     def __init__(self, snakefile, base_indent=0, dedent=0, root=True):
@@ -982,25 +985,27 @@ class UseRule(GlobalKeywordState):
         self.name_modifier = []
         self.from_module = None
         self._with_block = []
+        self._new_func_name = None
         self.lineno = self.snakefile.lines + 1
 
     def end(self):
         name_modifier = "".join(self.name_modifier) if self.name_modifier else None
-        yield "@workflow.userule(rules={!r}, from_module={!r}, exclude_rules={!r}, name_modifier={!r}, lineno={})".format(
-            self.rules, self.from_module, self.exclude_rules, name_modifier, self.lineno
+        yield "@workflow.userule(rules={}, from_module={!r}, exclude_rules={!r}, name_modifier={!r}, lineno={}, old_func_name={})".format(
+            [self._new_func_name], self.from_module, self.exclude_rules, name_modifier, self.lineno, self.rules,
         )
         yield "\n"
 
         if self._with_block:
             # yield with block
             yield from self._with_block
-
             yield "@workflow.run"
             yield "\n"
 
         rulename = self.rules[0]
         if rulename == "*":
             rulename = "__allrules__"
+        elif self._new_func_name is not None:
+            rulename = self._new_func_name
         yield f"def __userule_{self.from_module}_{rulename}():"
         # the end is detected.
         # So we can safely reset the indent to zero here
@@ -1184,15 +1189,32 @@ class UseRule(GlobalKeywordState):
             yield token.string, token
         elif is_name(token):
             try:
-                self._with_block.extend(
-                    self.subautomaton(token.string, token=token).consume()
-                )
-                yield from ()
-            except KeyError:
-                self.error(
-                    f"Unexpected keyword {token.string} in rule definition",
-                    token,
-                )
+                if token.string == "wrapper":
+                    if self._new_func_name is not None:
+                        raise self.error(
+                            "Multiple new wrappers provided in 'use rule'.", token
+                        )
+                    self.snakefile.rulecount += 1
+                    self._new_func_name = f"{self.snakefile.rulecount!r}"
+
+                    yield f"@workflow.rule(name={self._new_func_name!r}, lineno={self.lineno}, snakefile={self.snakefile.path!r})", token 
+                    yield "\n", token
+
+                    yield from self.subautomaton(
+                        token.string, token=token, rulename=self._new_func_name,
+                    ).consume()
+
+                else:
+                    try:
+                        self._with_block.extend(
+                            self.subautomaton(token.string, token=token).consume()
+                        )
+                        yield from ()
+                    except KeyError:
+                        self.error(
+                            f"Unexpected keyword {token.string} in rule definition",
+                            token,
+                        )
             except StopAutomaton as e:
                 self.indentation(e.token)
                 yield from self.block(e.token)
