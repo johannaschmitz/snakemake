@@ -1569,7 +1569,7 @@ class Workflow(WorkflowExecutorInterface):
             isinstance(snakefile, LocalSourceFile)
             and snakefile_path_or_uri not in sys.path
         ):
-            # insert the current directory into sys.path
+            # insert the current directory into sys.pathf
             # this allows to import modules from the workflow directory
             sys.path.insert(0, snakefile.get_basedir().get_path_or_uri())
 
@@ -1987,6 +1987,26 @@ class Workflow(WorkflowExecutorInterface):
         def decorate(ruleinfo):
             ruleinfo.input = InOutput(paths, kwpaths, self.modifier.path_modifier)
             return ruleinfo
+
+        return decorate
+
+    def wwrapper(self, *values):
+
+        print('values', values)
+        def decorate(ruleinfo):
+            print('ruleinfo')
+            print(ruleinfo.__dict__)
+            print('ruleinfo.func.__dict__')
+            print('rules')
+            for k, v in self._rules.items():
+                print(k, type(k), v, type(v))
+            original_rule = ruleinfo.func.__name__.rsplit('_')[-1]
+            print(original_rule)
+            if original_rule in self._rules:
+                print('found')
+                print(self._rules[original_rule])
+
+            print(ruleinfo.func.__name__)
 
         return decorate
 

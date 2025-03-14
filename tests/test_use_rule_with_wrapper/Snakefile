@@ -1,7 +1,8 @@
 shell.executable("bash")
 
 rule all:
-    "test.vcf.gz"
+    input:
+        "test.vcf.gz"
 
 rule A:
     input:

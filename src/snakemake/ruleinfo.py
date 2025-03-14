@@ -71,6 +71,7 @@ class RuleInfo:
 
         if modifier.ruleinfo_overwrite:
             for key, value in modifier.ruleinfo_overwrite.__dict__.items():
+                print(key, value)
                 if key != "func" and value is not None:
                     if key == "params":
                         # if positional arguments are used after the 'with' statement

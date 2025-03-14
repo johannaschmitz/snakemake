@@ -666,6 +666,9 @@ class Notebook(Script):
         )
 
 
+class WWrapper(RuleKeywordState):
+    pass
+
 class Wrapper(Script):
     start_func = "@workflow.wrapper"
     end_func = "wrapper"
@@ -970,7 +973,11 @@ class Module(GlobalKeywordState):
 
 
 class UseRule(GlobalKeywordState):
-    subautomata = rule_property_subautomata
+    subautomata = dict(
+        wrapper=WWrapper,
+        **rule_property_subautomata
+    )
+
     deprecated = rule_property_deprecated
 
     def __init__(self, snakefile, base_indent=0, dedent=0, root=True):
